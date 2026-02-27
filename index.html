@@ -413,7 +413,7 @@ function analyze(md) {
   const wordCount = words.length;
   const charCount = text.length;
 
-  // Strictness analysis
+  // Strictness analysis (English)
   const nevers = (text.match(/\bNEVER\b/gi) || []).length;
   const donts = (text.match(/\bDO NOT\b/gi) || []).length;
   const always = (text.match(/\bALWAYS\b/gi) || []).length;
@@ -421,7 +421,17 @@ function analyze(md) {
   const shoulds = (text.match(/\bSHOULD\b/gi) || []).length;
   const importants = (text.match(/\bIMPORTANT\b/gi) || []).length;
   const criticals = (text.match(/\bCRITICAL\b/gi) || []).length;
-  const strictTotal = nevers + donts + always + musts + importants + criticals;
+
+  // Strictness analysis (Japanese — 禁止/するな/絶対/必ず/厳命/不可)
+  const jpForbidden = (text.match(/禁止/g) || []).length;
+  const jpDontDo = (text.match(/するな|してはいけない|するべからず/g) || []).length;
+  const jpAbsolute = (text.match(/絶対/g) || []).length;
+  const jpMust = (text.match(/必ず/g) || []).length;
+  const jpStrictOrder = (text.match(/厳命/g) || []).length;
+  const jpNotAllowed = (text.match(/不可(?!能)/g) || []).length;
+  const jpStrict = jpForbidden + jpDontDo + jpAbsolute + jpMust + jpStrictOrder + jpNotAllowed;
+
+  const strictTotal = nevers + donts + always + musts + importants + criticals + jpStrict;
 
   // Sections
   const h2s = (text.match(/^## /gm) || []).length;
@@ -463,7 +473,7 @@ function analyze(md) {
 
   return {
     lineCount, wordCount, charCount,
-    nevers, donts, always, musts, shoulds, importants, criticals, strictTotal,
+    nevers, donts, always, musts, shoulds, importants, criticals, jpStrict, strictTotal,
     h2s, h3s, headers,
     hookMentions, mcpMentions, toolMentions,
     codeBlocks, emojis, tables, bullets,

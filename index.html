@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CC Roast — Your CLAUDE.md, Brutally Honest</title>
+<meta name="description" content="Paste your CLAUDE.md and get roasted. Comedy meets code review.">
+<meta property="og:title" content="CC Roast — Your CLAUDE.md, Brutally Honest">
+<meta property="og:description" content="How overengineered is your AI setup? Find out the hard way.">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface-2: #242424;
+  --fire: #ff4500;
+  --fire-glow: rgba(255, 69, 0, 0.15);
+  --gold: #ffd700;
+  --ice: #00d4ff;
+  --text: #e8e8e8;
+  --text-dim: #888;
+  --text-faint: #555;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* Header */
+header {
+  text-align: center;
+  padding: 3rem 0 2rem;
+}
+
+header h1 {
+  font-size: 2.5rem;
+  font-weight: 900;
+  margin-bottom: 0.3rem;
+}
+
+header h1 .fire { color: var(--fire); }
+
+header .tagline {
+  color: var(--text-dim);
+  font-size: 1.05rem;
+}
+
+/* Input area */
+.input-section {
+  margin-top: 2rem;
+}
+
+.input-section label {
+  display: block;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.input-section textarea {
+  width: 100%;
+  height: 220px;
+  background: var(--surface);
+  border: 2px solid var(--surface-2);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+  padding: 1rem;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.input-section textarea:focus {
+  outline: none;
+  border-color: var(--fire);
+}
+
+.input-section textarea::placeholder {
+  color: var(--text-faint);
+}
+
+.btn-roast {
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--fire);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  letter-spacing: 0.5px;
+}
+
+.btn-roast:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(255, 69, 0, 0.3);
+}
+
+.btn-roast:active { transform: translateY(0); }
+
+.demo-link {
+  display: block;
+  text-align: center;
+  margin-top: 0.8rem;
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.demo-link:hover { color: var(--ice); }
+
+/* Results */
+#results {
+  display: none;
+  margin-top: 2rem;
+}
+
+/* Verdict banner */
+.verdict-banner {
+  text-align: center;
+  padding: 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.verdict-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--fire-glow), transparent 60%);
+  pointer-events: none;
+}
+
+.verdict-banner .verdict-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.verdict-banner .verdict-title {
+  font-size: 1.8rem;
+  font-weight: 900;
+  margin-bottom: 0.3rem;
+}
+
+.verdict-banner .verdict-subtitle {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+/* Score meters */
+.scores-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.score-card {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1.2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.score-card .sc-icon { font-size: 1.3rem; margin-bottom: 0.3rem; }
+.score-card .sc-label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+.score-card .sc-value { font-size: 1.8rem; font-weight: 800; margin: 0.3rem 0; }
+.score-card .sc-bar { height: 4px; background: var(--surface-2); border-radius: 2px; margin-top: 0.5rem; }
+.score-card .sc-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+
+/* Roast list */
+.roast-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.roast-item {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1.2rem;
+  border-left: 3px solid var(--fire);
+  position: relative;
+}
+
+.roast-item.compliment {
+  border-left-color: var(--gold);
+}
+
+.roast-item .ri-category {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.3rem;
+}
+
+.roast-item .ri-text {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.roast-item .ri-text strong {
+  color: var(--fire);
+}
+
+.roast-item.compliment .ri-text strong {
+  color: var(--gold);
+}
+
+/* Share section */
+.share-section {
+  text-align: center;
+  padding: 1.5rem;
+  background: var(--surface);
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.share-section .share-text {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 1rem;
+}
+
+.share-btns {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 50px;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.share-btn:hover { transform: translateY(-1px); }
+.share-btn.twitter { background: #1d9bf0; color: white; }
+.share-btn.copy { background: var(--surface-2); color: var(--text); }
+.share-btn.again { background: transparent; color: var(--text-dim); border: 1px solid var(--surface-2); }
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 2rem 0;
+  color: var(--text-faint);
+  font-size: 0.75rem;
+}
+
+.footer a { color: var(--fire); text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
+
+/* Stats bar */
+.quick-stats {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.qs-item {
+  text-align: center;
+}
+
+.qs-item .qs-val {
+  font-size: 1.5rem;
+  font-weight: 800;
+  font-family: 'SF Mono', monospace;
+}
+
+.qs-item .qs-lbl {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 500px) {
+  .scores-grid { grid-template-columns: 1fr; }
+  header h1 { font-size: 2rem; }
+  .quick-stats { gap: 1.2rem; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>CC <span class="fire">Roast</span></h1>
+  <p class="tagline">Your CLAUDE.md, brutally honest.</p>
+</header>
+
+<div class="input-section" id="input-section">
+  <label>Paste your CLAUDE.md contents:</label>
+  <textarea id="claude-md" placeholder="# My Claude Code Instructions&#10;&#10;## Rules&#10;- NEVER do this&#10;- ALWAYS do that&#10;- DO NOT even think about it&#10;..."></textarea>
+  <button class="btn-roast" onclick="roastIt()">Roast My Config</button>
+  <span class="demo-link" onclick="loadDemo()">Try with a demo CLAUDE.md</span>
+</div>
+
+<div id="results">
+  <div class="verdict-banner" id="verdict-banner">
+    <div class="verdict-icon" id="verdict-icon"></div>
+    <div class="verdict-title" id="verdict-title"></div>
+    <div class="verdict-subtitle" id="verdict-subtitle"></div>
+  </div>
+
+  <div class="quick-stats" id="quick-stats"></div>
+  <div class="scores-grid" id="scores-grid"></div>
+  <div class="roast-list" id="roast-list"></div>
+
+  <div class="share-section">
+    <div class="share-text">Dare your friends to get roasted too</div>
+    <div class="share-btns">
+      <button class="share-btn twitter" onclick="shareTwitter()">Share on X</button>
+      <button class="share-btn copy" onclick="copyResult()">Copy Result</button>
+      <button class="share-btn again" onclick="tryAgain()">Roast Again</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Part of <a href="https://yurukusa.github.io/">cc-toolkit</a> &mdash;
+  <a href="https://yurukusa.github.io/cc-health-check/">Health Check</a> &middot;
+  <a href="https://github.com/yurukusa/cc-session-stats">Session Stats</a> &middot;
+  <a href="https://github.com/yurukusa/cc-audit-log">Audit Log</a> &middot;
+  <a href="https://yurukusa.github.io/cc-cost-check/">Cost Check</a> &middot;
+  <a href="https://yurukusa.github.io/cc-wrapped/">Wrapped</a>
+</div>
+
+</div>
+
+<script>
+const DEMO_MD = `# Claude Code Instructions
+
+## Core Rules
+- NEVER modify files without reading them first
+- ALWAYS run tests before committing
+- DO NOT push to main without approval
+- NEVER use rm -rf
+- DO NOT skip pre-commit hooks
+- ALWAYS use TypeScript strict mode
+
+## Code Style
+- Use functional programming patterns
+- Prefer immutable data structures
+- NEVER use \`any\` type
+- DO NOT use console.log in production code
+- ALWAYS add JSDoc comments to public functions
+- Keep functions under 20 lines
+- NEVER nest more than 3 levels deep
+
+## Git Rules
+- Commit messages must follow Conventional Commits
+- NEVER force push
+- ALWAYS create a branch for changes
+- DO NOT commit .env files
+
+## Communication
+- Be concise in responses
+- ALWAYS explain your reasoning
+- When unsure, ask before proceeding
+- Provide alternatives when suggesting changes
+
+## Testing
+- Write tests for all new functions
+- Maintain >80% code coverage
+- NEVER skip failing tests
+- Use descriptive test names
+
+## Security
+- NEVER hardcode secrets
+- ALWAYS validate user input
+- Use parameterized queries for SQL
+- Check dependencies for vulnerabilities`;
+
+// Analysis engine
+function analyze(md) {
+  const lines = md.split('\n');
+  const text = md;
+  const words = text.split(/\s+/).filter(w => w.length > 0);
+  const lineCount = lines.length;
+  const wordCount = words.length;
+  const charCount = text.length;
+
+  // Strictness analysis
+  const nevers = (text.match(/\bNEVER\b/gi) || []).length;
+  const donts = (text.match(/\bDO NOT\b/gi) || []).length;
+  const always = (text.match(/\bALWAYS\b/gi) || []).length;
+  const musts = (text.match(/\bMUST\b/gi) || []).length;
+  const shoulds = (text.match(/\bSHOULD\b/gi) || []).length;
+  const importants = (text.match(/\bIMPORTANT\b/gi) || []).length;
+  const criticals = (text.match(/\bCRITICAL\b/gi) || []).length;
+  const strictTotal = nevers + donts + always + musts + importants + criticals;
+
+  // Sections
+  const h2s = (text.match(/^## /gm) || []).length;
+  const h3s = (text.match(/^### /gm) || []).length;
+  const headers = h2s + h3s;
+
+  // Hooks/tools
+  const hookMentions = (text.match(/\bhook/gi) || []).length;
+  const mcpMentions = (text.match(/\bMCP\b/gi) || []).length;
+  const toolMentions = (text.match(/\btool/gi) || []).length;
+
+  // Code blocks
+  const codeBlocks = (text.match(/```/g) || []).length / 2;
+
+  // Emoji usage
+  const emojis = (text.match(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu) || []).length;
+
+  // Tables
+  const tables = (text.match(/\|.*\|.*\|/g) || []).length;
+
+  // Git safety
+  const hasGitSafety = /git.*safe|force.?push|rm -rf|reset.*hard|backup/i.test(text);
+
+  // Test mentions
+  const testMentions = (text.match(/\btest/gi) || []).length;
+
+  // Security mentions
+  const securityMentions = (text.match(/\bsecur|secret|token|credential|api.?key|\.env\b/gi) || []).length;
+
+  // Contradictions check
+  const saysConcise = /\bconcise\b/i.test(text);
+  const isVerbose = wordCount > 500;
+
+  // Bullet points
+  const bullets = (text.match(/^[\s]*[-*]\s/gm) || []).length;
+
+  // TODO/FIXME
+  const todos = (text.match(/\bTODO\b|\bFIXME\b|\bHACK\b/gi) || []).length;
+
+  return {
+    lineCount, wordCount, charCount,
+    nevers, donts, always, musts, shoulds, importants, criticals, strictTotal,
+    h2s, h3s, headers,
+    hookMentions, mcpMentions, toolMentions,
+    codeBlocks, emojis, tables, bullets,
+    hasGitSafety, testMentions, securityMentions,
+    saysConcise, isVerbose, todos
+  };
+}
+
+// Score calculators (0-100)
+function verbosityScore(a) {
+  if (a.lineCount < 20) return 10;
+  if (a.lineCount < 50) return 25;
+  if (a.lineCount < 100) return 40;
+  if (a.lineCount < 200) return 55;
+  if (a.lineCount < 500) return 75;
+  if (a.lineCount < 1000) return 90;
+  return 100;
+}
+
+function strictnessScore(a) {
+  const density = a.strictTotal / Math.max(a.wordCount, 1) * 1000;
+  if (density < 2) return 10;
+  if (density < 5) return 25;
+  if (density < 10) return 40;
+  if (density < 20) return 60;
+  if (density < 40) return 80;
+  return 100;
+}
+
+function complexityScore(a) {
+  let score = 0;
+  score += Math.min(a.headers * 5, 30);
+  score += Math.min(a.codeBlocks * 8, 25);
+  score += Math.min(a.tables * 10, 20);
+  score += a.hookMentions > 3 ? 15 : a.hookMentions * 4;
+  score += a.mcpMentions > 0 ? 10 : 0;
+  return Math.min(score, 100);
+}
+
+function thoroughnessScore(a) {
+  let score = 0;
+  if (a.hasGitSafety) score += 20;
+  if (a.testMentions > 0) score += 20;
+  if (a.securityMentions > 0) score += 20;
+  if (a.codeBlocks > 0) score += 15;
+  if (a.headers >= 3) score += 15;
+  if (a.wordCount >= 100) score += 10;
+  return Math.min(score, 100);
+}
+
+// Roast generation
+function generateRoasts(a) {
+  const roasts = [];
+
+  // Verbosity roasts
+  if (a.lineCount > 800) {
+    roasts.push({ cat: 'Verbosity', text: '<strong>' + a.lineCount + ' lines.</strong> Your AI reads a novel before writing Hello World. This is a CLAUDE.md, not a PhD thesis.', type: 'roast' });
+  } else if (a.lineCount > 400) {
+    roasts.push({ cat: 'Verbosity', text: '<strong>' + a.lineCount + ' lines.</strong> Your CLAUDE.md is longer than most README files. Your AI is spending serious context window just reading your rules.', type: 'roast' });
+  } else if (a.lineCount > 200) {
+    roasts.push({ cat: 'Verbosity', text: a.lineCount + ' lines. That\'s... a lot of opinions about how an AI should behave. You could fit a working app in fewer lines.', type: 'roast' });
+  } else if (a.lineCount < 15) {
+    roasts.push({ cat: 'Verbosity', text: '<strong>' + a.lineCount + ' lines?</strong> That\'s not a CLAUDE.md, that\'s a sticky note. Your AI is basically improvising.', type: 'roast' });
+  } else if (a.lineCount < 40) {
+    roasts.push({ cat: 'Verbosity', text: 'Clean and lean at ' + a.lineCount + ' lines. Either you know exactly what you want, or you haven\'t discovered what can go wrong yet.', type: 'roast' });
+  }
+
+  // Strictness roasts
+  if (a.nevers > 10) {
+    roasts.push({ cat: 'Trust Issues', text: '<strong>' + a.nevers + ' "NEVER"s.</strong> Who hurt you? Your AI needs a therapist, not more rules.', type: 'roast' });
+  } else if (a.nevers > 5) {
+    roasts.push({ cat: 'Trust Issues', text: a.nevers + ' "NEVER"s. You\'re not writing instructions, you\'re writing a restraining order.', type: 'roast' });
+  }
+
+  if (a.donts > 8) {
+    roasts.push({ cat: 'Trust Issues', text: '<strong>' + a.donts + ' "DO NOT"s.</strong> At this point, your AI knows more about what NOT to do than what to actually do.', type: 'roast' });
+  }
+
+  if (a.always > 8) {
+    roasts.push({ cat: 'Control', text: a.always + ' "ALWAYS" directives. Absolute rules are comfortable until one of them contradicts another.', type: 'roast' });
+  }
+
+  if (a.strictTotal > 30) {
+    roasts.push({ cat: 'Helicopter Parent', text: '<strong>' + a.strictTotal + ' strict directives</strong> (NEVER/DO NOT/ALWAYS/MUST/IMPORTANT/CRITICAL). Your AI has less freedom than a minimum-security prisoner.', type: 'roast' });
+  } else if (a.strictTotal === 0) {
+    roasts.push({ cat: 'Vibes Only', text: 'Zero strict directives. No NEVER, no ALWAYS, no MUST. Either you\'re incredibly trusting or incredibly brave.', type: 'roast' });
+  }
+
+  // Contradiction check
+  if (a.saysConcise && a.isVerbose) {
+    roasts.push({ cat: 'Contradiction', text: 'You tell your AI to "<strong>be concise</strong>" in a ' + a.wordCount + '-word document. The irony is *chef\'s kiss*.', type: 'roast' });
+  }
+
+  // Hook addiction
+  if (a.hookMentions > 10) {
+    roasts.push({ cat: 'Hook Addiction', text: '<strong>' + a.hookMentions + ' hook references.</strong> Your AI is more hooks than code at this point. It\'s a safety net made entirely of safety nets.', type: 'roast' });
+  } else if (a.hookMentions > 5) {
+    roasts.push({ cat: 'Hooks', text: a.hookMentions + ' hook mentions. You\'ve graduated from "using hooks" to "being a hook enthusiast." There\'s no going back.', type: 'roast' });
+  }
+
+  // MCP
+  if (a.mcpMentions > 5) {
+    roasts.push({ cat: 'MCP Flex', text: a.mcpMentions + ' MCP references. You\'re not configuring an AI, you\'re building a space station.', type: 'roast' });
+  }
+
+  // Headers
+  if (a.headers > 15) {
+    roasts.push({ cat: 'Organization', text: '<strong>' + a.headers + ' section headers.</strong> Your CLAUDE.md has more chapters than a self-help book. The table of contents needs its own table of contents.', type: 'roast' });
+  }
+
+  // Emoji
+  if (a.emojis > 10) {
+    roasts.push({ cat: 'Aesthetic', text: a.emojis + ' emojis in your instructions. Are you configuring an AI or decorating a Notion page?', type: 'roast' });
+  }
+
+  // TODOs
+  if (a.todos > 0) {
+    roasts.push({ cat: 'Unfinished Business', text: a.todos + ' TODO/FIXME/HACK found. Even your instruction file has tech debt.', type: 'roast' });
+  }
+
+  // Missing basics roasts
+  if (!a.hasGitSafety) {
+    roasts.push({ cat: 'Missing Basics', text: 'No git safety rules detected. <strong>Living dangerously.</strong> One `rm -rf` away from a learning experience.', type: 'roast' });
+  }
+
+  if (a.testMentions === 0 && a.wordCount > 50) {
+    roasts.push({ cat: 'Missing Basics', text: 'Zero mentions of testing. Your AI ships code like it\'s 2005 and unit tests are just a suggestion.', type: 'roast' });
+  }
+
+  if (a.securityMentions === 0 && a.wordCount > 50) {
+    roasts.push({ cat: 'Missing Basics', text: 'No security rules. Your .env file is probably committed and your API keys are doing a victory lap on GitHub.', type: 'roast' });
+  }
+
+  // Compliments
+  if (a.hasGitSafety) {
+    roasts.push({ cat: 'Respect', text: 'You have git safety rules. <strong>This is genuinely good.</strong> Your repos will thank you.', type: 'compliment' });
+  }
+
+  if (a.testMentions > 3) {
+    roasts.push({ cat: 'Respect', text: 'Heavy emphasis on testing. <strong>Your future self will be grateful.</strong> This is the mark of someone who\'s been burned before.', type: 'compliment' });
+  }
+
+  if (a.securityMentions > 3) {
+    roasts.push({ cat: 'Respect', text: 'Solid security awareness. <strong>Not everyone thinks about this.</strong> Your AI won\'t accidentally commit secrets.', type: 'compliment' });
+  }
+
+  if (a.codeBlocks > 2) {
+    roasts.push({ cat: 'Respect', text: 'You include code examples in your instructions. <strong>Show, don\'t tell.</strong> This actually works better than prose.', type: 'compliment' });
+  }
+
+  if (a.headers >= 3 && a.headers <= 10 && a.lineCount >= 30 && a.lineCount <= 150) {
+    roasts.push({ cat: 'Respect', text: 'Well-structured with a sensible number of sections. <strong>This is the Goldilocks zone</strong> of CLAUDE.md length.', type: 'compliment' });
+  }
+
+  if (a.strictTotal >= 3 && a.strictTotal <= 12) {
+    roasts.push({ cat: 'Respect', text: 'Healthy number of guardrails without going overboard. <strong>You know your boundaries</strong> without being paranoid.', type: 'compliment' });
+  }
+
+  return roasts;
+}
+
+// Verdict types
+const VERDICTS = [
+  { id: 'micromanager', icon: '\uD83D\uDD75\uFE0F', title: 'S-Tier Micromanager', subtitle: 'Your AI has less autonomy than a vending machine', check: a => a.strictTotal > 25 && a.lineCount > 200 },
+  { id: 'helicopter', icon: '\uD83E\uDE82', title: 'Helicopter Operator', subtitle: 'Hovering, but with good intentions', check: a => a.strictTotal > 15 },
+  { id: 'novelist', icon: '\uD83D\uDCDA', title: 'The Novelist', subtitle: 'You didn\'t write instructions, you wrote a memoir', check: a => a.lineCount > 500 },
+  { id: 'paranoid', icon: '\uD83D\uDD12', title: 'Security Paranoid', subtitle: 'Fort Knox called. They want their policies back.', check: a => a.securityMentions > 5 && a.hasGitSafety },
+  { id: 'engineer', icon: '\u2699\uFE0F', title: 'Overengineered Perfection', subtitle: 'Your CLAUDE.md has better architecture than most apps', check: a => complexityScore(a) > 70 && a.lineCount > 100 },
+  { id: 'vibes', icon: '\u270C\uFE0F', title: 'Vibes Only', subtitle: 'Instructions? More like suggestions.', check: a => a.strictTotal < 3 && a.lineCount < 50 },
+  { id: 'minimalist', icon: '\uD83E\uDDD8', title: 'The Minimalist', subtitle: 'Less is more. Your AI appreciates the breathing room.', check: a => a.lineCount < 60 && a.lineCount >= 15 },
+  { id: 'sticky', icon: '\uD83D\uDCDD', title: 'Sticky Note Energy', subtitle: 'This is instructions for a goldfish, not an AI', check: a => a.lineCount < 15 },
+  { id: 'balanced', icon: '\u2696\uFE0F', title: 'Well-Balanced Config', subtitle: 'Structure meets trust. You might actually know what you\'re doing.', check: a => thoroughnessScore(a) > 60 && a.strictTotal <= 15 && a.lineCount >= 40 && a.lineCount <= 200 },
+  { id: 'trustfund', icon: '\uD83C\uDFB0', title: 'Trust Fund AI', subtitle: 'You gave an AI $200/month and a post-it note. Bold.', check: a => a.lineCount < 30 && a.strictTotal < 2 },
+  { id: 'default', icon: '\uD83D\uDD25', title: 'Standard Issue Operator', subtitle: 'Not bad, not roast-worthy, not boring. Just... fine.', check: () => true }
+];
+
+function getVerdict(a) {
+  return VERDICTS.find(v => v.check(a));
+}
+
+let lastAnalysis = null;
+let lastVerdict = null;
+
+function roastIt() {
+  const md = document.getElementById('claude-md').value.trim();
+  if (!md) return;
+  if (md.length < 10) {
+    alert('That\'s too short to roast. Give me something to work with.');
+    return;
+  }
+
+  const a = analyze(md);
+  lastAnalysis = a;
+  const verdict = getVerdict(a);
+  lastVerdict = verdict;
+  const roasts = generateRoasts(a);
+  const vScore = verbosityScore(a);
+  const sScore = strictnessScore(a);
+  const cScore = complexityScore(a);
+  const tScore = thoroughnessScore(a);
+
+  // Render verdict
+  const banner = document.getElementById('verdict-banner');
+  banner.style.background = 'var(--surface)';
+  document.getElementById('verdict-icon').textContent = verdict.icon;
+  document.getElementById('verdict-title').textContent = verdict.title;
+  document.getElementById('verdict-subtitle').textContent = verdict.subtitle;
+
+  // Quick stats
+  const qs = document.getElementById('quick-stats');
+  qs.innerHTML = '';
+  [{v: a.lineCount, l: 'Lines'}, {v: a.wordCount, l: 'Words'}, {v: a.strictTotal, l: 'Strict Rules'}, {v: a.headers, l: 'Sections'}].forEach(s => {
+    const d = document.createElement('div');
+    d.className = 'qs-item';
+    d.innerHTML = '<div class="qs-val">' + s.v + '</div><div class="qs-lbl">' + s.l + '</div>';
+    qs.appendChild(d);
+  });
+
+  // Score cards
+  const sg = document.getElementById('scores-grid');
+  sg.innerHTML = '';
+  [
+    { icon: '\uD83D\uDCDD', label: 'Verbosity', value: vScore, color: '#ff4500' },
+    { icon: '\uD83D\uDD12', label: 'Strictness', value: sScore, color: '#ff6b35' },
+    { icon: '\u2699\uFE0F', label: 'Complexity', value: cScore, color: '#00d4ff' },
+    { icon: '\u2705', label: 'Thoroughness', value: tScore, color: '#10b981' }
+  ].forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'score-card';
+    card.innerHTML =
+      '<div class="sc-icon">' + s.icon + '</div>' +
+      '<div class="sc-label">' + s.label + '</div>' +
+      '<div class="sc-value">' + s.value + '<span style="font-size:0.8rem;color:var(--text-faint)">/100</span></div>' +
+      '<div class="sc-bar"><div class="sc-fill" style="width:' + s.value + '%;background:' + s.color + '"></div></div>';
+    sg.appendChild(card);
+  });
+
+  // Roast items
+  const rl = document.getElementById('roast-list');
+  rl.innerHTML = '';
+  roasts.forEach(r => {
+    const item = document.createElement('div');
+    item.className = 'roast-item' + (r.type === 'compliment' ? ' compliment' : '');
+    item.innerHTML =
+      '<div class="ri-category">' + (r.type === 'compliment' ? '\u2B50 ' : '\uD83D\uDD25 ') + r.cat + '</div>' +
+      '<div class="ri-text">' + r.text + '</div>';
+    rl.appendChild(item);
+  });
+
+  // Show results
+  document.getElementById('input-section').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function loadDemo() {
+  document.getElementById('claude-md').value = DEMO_MD;
+}
+
+function shareTwitter() {
+  if (!lastVerdict || !lastAnalysis) return;
+  const a = lastAnalysis;
+  const text = 'My CLAUDE.md got roasted:\n\n' +
+    lastVerdict.icon + ' ' + lastVerdict.title + '\n' +
+    a.lineCount + ' lines \u00B7 ' + a.strictTotal + ' strict rules \u00B7 ' + a.headers + ' sections\n\n' +
+    '"' + lastVerdict.subtitle + '"\n\n' +
+    'Get roasted:';
+  const url = 'https://yurukusa.github.io/cc-roast/';
+  window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(url), '_blank');
+}
+
+function copyResult() {
+  if (!lastVerdict || !lastAnalysis) return;
+  const a = lastAnalysis;
+  const text = 'CC Roast Result:\n' +
+    lastVerdict.icon + ' ' + lastVerdict.title + '\n' +
+    '"' + lastVerdict.subtitle + '"\n' +
+    a.lineCount + ' lines | ' + a.strictTotal + ' strict rules | ' + a.headers + ' sections\n' +
+    'Verbosity: ' + verbosityScore(a) + '/100 | Strictness: ' + strictnessScore(a) + '/100\n' +
+    'https://yurukusa.github.io/cc-roast/';
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.share-btn.copy');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+function tryAgain() {
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('input-section').style.display = 'block';
+  document.getElementById('claude-md').value = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

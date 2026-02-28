@@ -90,6 +90,21 @@ header .tagline {
   color: var(--text-faint);
 }
 
+.btn-pick-file {
+  display: inline-block;
+  margin-bottom: 0.7rem;
+  padding: 0.5rem 1.2rem;
+  background: transparent;
+  border: 1px solid var(--fire);
+  color: var(--fire);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-pick-file:hover { background: rgba(249, 115, 22, 0.12); }
+
 .btn-roast {
   display: block;
   width: 100%;
@@ -337,6 +352,10 @@ header .tagline {
 
 <div class="input-section" id="input-section">
   <label id="input-label">Paste your CLAUDE.md contents:</label>
+  <label class="btn-pick-file" id="pick-file-btn">
+    Pick CLAUDE.md File
+    <input type="file" id="file-input" accept=".md,text/plain" style="display:none" onchange="loadFile(this)">
+  </label>
   <textarea id="claude-md" placeholder="# My Claude Code Instructions&#10;&#10;## Rules&#10;- NEVER do this&#10;- ALWAYS do that&#10;- DO NOT even think about it&#10;..."></textarea>
   <button class="btn-roast" onclick="roastIt()" id="roast-btn">Roast My Config</button>
   <span class="demo-link" onclick="loadDemo()" id="demo-link">Try with a demo CLAUDE.md</span>
@@ -695,6 +714,16 @@ function loadDemo() {
   document.getElementById('claude-md').value = DEMO_MD;
 }
 
+function loadFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('claude-md').value = e.target.result;
+  };
+  reader.readAsText(file);
+}
+
 function shareTwitter() {
   if (!lastVerdict || !lastAnalysis) return;
   const a = lastAnalysis;
@@ -737,6 +766,7 @@ let currentLang = 'en';
 const UI_JA = {
   tagline: 'CLAUDE.md を、容赦なく採点。',
   inputLabel: 'CLAUDE.md の内容を貼り付けてください：',
+  pickFile: 'CLAUDE.md ファイルを選択',
   placeholder: '# Claude Code の指示\n\n## ルール\n- これは絶対にするな\n- これは常にやれ\n- これは考えるな\n...',
   roastBtn: '採点スタート',
   demoLink: 'デモ CLAUDE.md で試す',
@@ -753,6 +783,7 @@ const UI_JA = {
 const UI_EN = {
   tagline: 'Your CLAUDE.md, brutally honest.',
   inputLabel: 'Paste your CLAUDE.md contents:',
+  pickFile: 'Pick CLAUDE.md File',
   placeholder: '# My Claude Code Instructions\n\n## Rules\n- NEVER do this\n- ALWAYS do that\n- DO NOT even think about it\n...',
   roastBtn: 'Roast My Config',
   demoLink: 'Try with a demo CLAUDE.md',
@@ -869,6 +900,7 @@ function applyLang() {
   const ui = currentLang === 'ja' ? UI_JA : UI_EN;
   document.getElementById('tagline').textContent = ui.tagline;
   document.getElementById('input-label').textContent = ui.inputLabel;
+  document.getElementById('pick-file-btn').childNodes[0].textContent = ui.pickFile + ' ';
   document.getElementById('claude-md').placeholder = ui.placeholder;
   document.getElementById('roast-btn').textContent = ui.roastBtn;
   document.getElementById('demo-link').textContent = ui.demoLink;

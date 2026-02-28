@@ -311,6 +311,19 @@ header .tagline {
   header h1 { font-size: 2rem; }
   .quick-stats { gap: 1.2rem; }
 }
+
+.lang-toggle {
+  margin-top: 0.8rem;
+  background: var(--surface-2);
+  border: 1px solid var(--fire);
+  color: var(--fire);
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+}
+.lang-toggle:hover { background: var(--fire-glow); }
 </style>
 </head>
 <body>
@@ -318,14 +331,15 @@ header .tagline {
 
 <header>
   <h1>CC <span class="fire">Roast</span></h1>
-  <p class="tagline">Your CLAUDE.md, brutally honest.</p>
+  <p class="tagline" id="tagline">Your CLAUDE.md, brutally honest.</p>
+  <button class="lang-toggle" onclick="toggleLang()" id="lang-btn">日本語</button>
 </header>
 
 <div class="input-section" id="input-section">
-  <label>Paste your CLAUDE.md contents:</label>
+  <label id="input-label">Paste your CLAUDE.md contents:</label>
   <textarea id="claude-md" placeholder="# My Claude Code Instructions&#10;&#10;## Rules&#10;- NEVER do this&#10;- ALWAYS do that&#10;- DO NOT even think about it&#10;..."></textarea>
-  <button class="btn-roast" onclick="roastIt()">Roast My Config</button>
-  <span class="demo-link" onclick="loadDemo()">Try with a demo CLAUDE.md</span>
+  <button class="btn-roast" onclick="roastIt()" id="roast-btn">Roast My Config</button>
+  <span class="demo-link" onclick="loadDemo()" id="demo-link">Try with a demo CLAUDE.md</span>
 </div>
 
 <div id="results">
@@ -340,11 +354,11 @@ header .tagline {
   <div class="roast-list" id="roast-list"></div>
 
   <div class="share-section">
-    <div class="share-text">Dare your friends to get roasted too</div>
+    <div class="share-text" id="share-text">Dare your friends to get roasted too</div>
     <div class="share-btns">
-      <button class="share-btn twitter" onclick="shareTwitter()">Share on X</button>
-      <button class="share-btn copy" onclick="copyResult()">Copy Result</button>
-      <button class="share-btn again" onclick="tryAgain()">Roast Again</button>
+      <button class="share-btn twitter" onclick="shareTwitter()" id="share-twitter-btn">Share on X</button>
+      <button class="share-btn copy" onclick="copyResult()" id="copy-btn">Copy Result</button>
+      <button class="share-btn again" onclick="tryAgain()" id="again-btn">Roast Again</button>
     </div>
   </div>
 </div>
@@ -660,70 +674,17 @@ let lastVerdict = null;
 function roastIt() {
   const md = document.getElementById('claude-md').value.trim();
   if (!md) return;
-  if (md.length < 10) {
-    alert('That\'s too short to roast. Give me something to work with.');
-    return;
-  }
+  const tooShort = currentLang === 'ja' ? '短すぎて採点できない。もっと書いてください。' : 'That\'s too short to roast. Give me something to work with.';
+  if (md.length < 10) { alert(tooShort); return; }
 
   const a = analyze(md);
   lastAnalysis = a;
   const verdict = getVerdict(a);
   lastVerdict = verdict;
-  const roasts = generateRoasts(a);
-  const vScore = verbosityScore(a);
-  const sScore = strictnessScore(a);
-  const cScore = complexityScore(a);
-  const tScore = thoroughnessScore(a);
 
-  // Render verdict
-  const banner = document.getElementById('verdict-banner');
-  banner.style.background = 'var(--surface)';
-  document.getElementById('verdict-icon').textContent = verdict.icon;
-  document.getElementById('verdict-title').textContent = verdict.title;
-  document.getElementById('verdict-subtitle').textContent = verdict.subtitle;
+  document.getElementById('verdict-banner').style.background = 'var(--surface)';
+  renderResults(a, verdict);
 
-  // Quick stats
-  const qs = document.getElementById('quick-stats');
-  qs.innerHTML = '';
-  [{v: a.lineCount, l: 'Lines'}, {v: a.wordCount, l: 'Words'}, {v: a.strictTotal, l: 'Strict Rules'}, {v: a.headers, l: 'Sections'}].forEach(s => {
-    const d = document.createElement('div');
-    d.className = 'qs-item';
-    d.innerHTML = '<div class="qs-val">' + s.v + '</div><div class="qs-lbl">' + s.l + '</div>';
-    qs.appendChild(d);
-  });
-
-  // Score cards
-  const sg = document.getElementById('scores-grid');
-  sg.innerHTML = '';
-  [
-    { icon: '\uD83D\uDCDD', label: 'Verbosity', value: vScore, color: '#ff4500' },
-    { icon: '\uD83D\uDD12', label: 'Strictness', value: sScore, color: '#ff6b35' },
-    { icon: '\u2699\uFE0F', label: 'Complexity', value: cScore, color: '#00d4ff' },
-    { icon: '\u2705', label: 'Thoroughness', value: tScore, color: '#10b981' }
-  ].forEach(s => {
-    const card = document.createElement('div');
-    card.className = 'score-card';
-    card.innerHTML =
-      '<div class="sc-icon">' + s.icon + '</div>' +
-      '<div class="sc-label">' + s.label + '</div>' +
-      '<div class="sc-value">' + s.value + '<span style="font-size:0.8rem;color:var(--text-faint)">/100</span></div>' +
-      '<div class="sc-bar"><div class="sc-fill" style="width:' + s.value + '%;background:' + s.color + '"></div></div>';
-    sg.appendChild(card);
-  });
-
-  // Roast items
-  const rl = document.getElementById('roast-list');
-  rl.innerHTML = '';
-  roasts.forEach(r => {
-    const item = document.createElement('div');
-    item.className = 'roast-item' + (r.type === 'compliment' ? ' compliment' : '');
-    item.innerHTML =
-      '<div class="ri-category">' + (r.type === 'compliment' ? '\u2B50 ' : '\uD83D\uDD25 ') + r.cat + '</div>' +
-      '<div class="ri-text">' + r.text + '</div>';
-    rl.appendChild(item);
-  });
-
-  // Show results
   document.getElementById('input-section').style.display = 'none';
   document.getElementById('results').style.display = 'block';
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -736,11 +697,11 @@ function loadDemo() {
 function shareTwitter() {
   if (!lastVerdict || !lastAnalysis) return;
   const a = lastAnalysis;
-  const text = 'My CLAUDE.md got roasted:\n\n' +
-    lastVerdict.icon + ' ' + lastVerdict.title + '\n' +
-    a.lineCount + ' lines \u00B7 ' + a.strictTotal + ' strict rules \u00B7 ' + a.headers + ' sections\n\n' +
-    '"' + lastVerdict.subtitle + '"\n\n' +
-    'Get roasted:';
+  const vt = currentLang === 'ja' && VERDICTS_JA[lastVerdict.id] ? VERDICTS_JA[lastVerdict.id].title : lastVerdict.title;
+  const vs = currentLang === 'ja' && VERDICTS_JA[lastVerdict.id] ? VERDICTS_JA[lastVerdict.id].subtitle : lastVerdict.subtitle;
+  const text = currentLang === 'ja'
+    ? 'CLAUDE.md を CC Roast で採点してもらった:\n\n' + lastVerdict.icon + ' ' + vt + '\n' + a.lineCount + '行 · ' + a.strictTotal + ' strictルール · ' + a.headers + 'セクション\n\n"' + vs + '"\n\nあなたも採点:'
+    : 'My CLAUDE.md got roasted:\n\n' + lastVerdict.icon + ' ' + vt + '\n' + a.lineCount + ' lines · ' + a.strictTotal + ' strict rules · ' + a.headers + ' sections\n\n"' + vs + '"\n\nGet roasted:';
   const url = 'https://yurukusa.github.io/cc-roast/';
   window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(url), '_blank');
 }
@@ -767,6 +728,214 @@ function tryAgain() {
   document.getElementById('input-section').style.display = 'block';
   document.getElementById('claude-md').value = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ─── 日本語対応 ────────────────────────────────────────────
+let currentLang = 'en';
+
+const UI_JA = {
+  tagline: 'CLAUDE.md を、容赦なく採点。',
+  inputLabel: 'CLAUDE.md の内容を貼り付けてください：',
+  placeholder: '# Claude Code の指示\n\n## ルール\n- これは絶対にするな\n- これは常にやれ\n- これは考えるな\n...',
+  roastBtn: '採点スタート',
+  demoLink: 'デモ CLAUDE.md で試す',
+  shareText: '友達も採点してもらおう',
+  shareTwitter: 'X でシェア',
+  copyResult: 'コピー',
+  roastAgain: 'もう一度',
+  langBtn: 'EN',
+  lines: '行', words: '語', strictRules: 'Strictルール', sections: 'セクション',
+  verbosity: '冗長性', strictness: '厳格性', complexity: '複雑性', thoroughness: '網羅性',
+  roastIcon: '🔥', complimentIcon: '⭐',
+};
+
+const UI_EN = {
+  tagline: 'Your CLAUDE.md, brutally honest.',
+  inputLabel: 'Paste your CLAUDE.md contents:',
+  placeholder: '# My Claude Code Instructions\n\n## Rules\n- NEVER do this\n- ALWAYS do that\n- DO NOT even think about it\n...',
+  roastBtn: 'Roast My Config',
+  demoLink: 'Try with a demo CLAUDE.md',
+  shareText: 'Dare your friends to get roasted too',
+  shareTwitter: 'Share on X',
+  copyResult: 'Copy Result',
+  roastAgain: 'Roast Again',
+  langBtn: '日本語',
+  lines: 'Lines', words: 'Words', strictRules: 'Strict Rules', sections: 'Sections',
+  verbosity: 'Verbosity', strictness: 'Strictness', complexity: 'Complexity', thoroughness: 'Thoroughness',
+  roastIcon: '🔥', complimentIcon: '⭐',
+};
+
+const VERDICTS_JA = {
+  micromanager: { title: 'S級マイクロマネジャー', subtitle: '自動販売機よりAIに自由がない' },
+  helicopter:   { title: 'ヘリコプター管理者', subtitle: '善意でホバリング中' },
+  novelist:     { title: '小説家', subtitle: '指示を書いたんじゃなく、回顧録を書いた' },
+  paranoid:     { title: 'セキュリティ偏執者', subtitle: '金庫から電話があった。ポリシーを返してほしいって' },
+  engineer:     { title: '過剰設計の完璧主義者', subtitle: 'CLAUDE.mdの方がほとんどのアプリよりアーキテクチャがしっかりしてる' },
+  vibes:        { title: 'ノリだけ', subtitle: '設定？むしろ提案じゃない？' },
+  minimalist:   { title: 'ミニマリスト', subtitle: '少ない方が多い。AIが窮屈じゃなくて感謝してる' },
+  sticky:       { title: '付箋エネルギー', subtitle: 'これは金魚への指示であってAIへじゃない' },
+  balanced:     { title: 'バランス型', subtitle: '構造と信頼のバランス。わかってるかもしれない' },
+  trustfund:    { title: '信託AIユーザー', subtitle: '月$200のAIに付箋一枚渡した。大胆' },
+  default:      { title: '一般オペレーター', subtitle: '悪くない、ネタにもならない、退屈でもない。ただ…普通' },
+};
+
+function generateRoastsJA(a) {
+  const roasts = [];
+  if (a.lineCount > 800)
+    roasts.push({ cat: '冗長性', text: '<strong>' + a.lineCount + '行。</strong> AIはHello Worldを書く前に小説を読まされてる。これはCLAUDE.mdじゃなく博士論文。', type: 'roast' });
+  else if (a.lineCount > 400)
+    roasts.push({ cat: '冗長性', text: '<strong>' + a.lineCount + '行。</strong> READMEより長い。ルールを読むだけでコンテキストウィンドウが消える。', type: 'roast' });
+  else if (a.lineCount > 200)
+    roasts.push({ cat: '冗長性', text: a.lineCount + '行。AIへの意見が多すぎる。このサイズでアプリが1本作れる。', type: 'roast' });
+  else if (a.lineCount < 15)
+    roasts.push({ cat: '冗長性', text: '<strong>' + a.lineCount + '行？</strong> CLAUDE.mdじゃなく付箋。AIはほぼアドリブしてる。', type: 'roast' });
+  else if (a.lineCount < 40)
+    roasts.push({ cat: '冗長性', text: a.lineCount + '行でクリーン。何を求めているか分かってるか、まだ何が起きるか分かってないか。', type: 'roast' });
+
+  if (a.nevers > 10)
+    roasts.push({ cat: 'トラウマ', text: '<strong>"NEVER"が' + a.nevers + '個。</strong> 誰かに傷つけられた？AIはセラピーが必要、ルールじゃなく。', type: 'roast' });
+  else if (a.nevers > 5)
+    roasts.push({ cat: 'トラウマ', text: '"NEVER"が' + a.nevers + '個。設定じゃなく接近禁止命令を書いてる。', type: 'roast' });
+
+  if (a.donts > 8)
+    roasts.push({ cat: 'トラウマ', text: '<strong>"DO NOT"が' + a.donts + '個。</strong> 何をすべきかよりすべきでないことの方を多く知ってるAI。', type: 'roast' });
+
+  if (a.always > 8)
+    roasts.push({ cat: 'コントロール', text: '"ALWAYS"が' + a.always + '個。絶対ルールは一つが別のと矛盾するまでは快適。', type: 'roast' });
+
+  if (a.strictTotal > 30)
+    roasts.push({ cat: 'ヘリコプター管理', text: '<strong>Strictディレクティブが' + a.strictTotal + '個</strong>（NEVER/DO NOT/ALWAYS/MUST等）。最低警備の刑務所より自由がない。', type: 'roast' });
+  else if (a.strictTotal === 0)
+    roasts.push({ cat: 'ノリだけ', text: 'Strictディレクティブゼロ。NEVER も ALWAYS も MUST も なし。超信頼か超無謀か。', type: 'roast' });
+
+  if (a.saysConcise && a.isVerbose)
+    roasts.push({ cat: '矛盾', text: '"<strong>簡潔に</strong>"と指示している文書が' + a.wordCount + '語。皮肉が*完璧*。', type: 'roast' });
+
+  if (a.hookMentions > 10)
+    roasts.push({ cat: 'フック中毒', text: '<strong>フックの言及が' + a.hookMentions + '回。</strong> セーフティネットがセーフティネットで作られてる状態。', type: 'roast' });
+  else if (a.hookMentions > 5)
+    roasts.push({ cat: 'フック', text: a.hookMentions + '回のフック言及。「フックを使う人」から「フック愛好家」に昇格。戻れない。', type: 'roast' });
+
+  if (a.mcpMentions > 5)
+    roasts.push({ cat: 'MCP自慢', text: 'MCPの言及が' + a.mcpMentions + '回。AIを設定してるんじゃなく宇宙ステーションを建ててる。', type: 'roast' });
+
+  if (a.headers > 15)
+    roasts.push({ cat: '構成', text: '<strong>セクションが' + a.headers + '個。</strong> 目次が自分の目次を必要としてる。', type: 'roast' });
+
+  if (a.emojis > 10)
+    roasts.push({ cat: 'デコレーション', text: a.emojis + '個の絵文字。AIを設定してるの？Notionページを飾ってるの？', type: 'roast' });
+
+  if (a.todos > 0)
+    roasts.push({ cat: '未完成', text: 'TODO/FIXME/HACKが' + a.todos + '個。設定ファイルにも技術的負債がある。', type: 'roast' });
+
+  if (!a.hasGitSafety)
+    roasts.push({ cat: '基礎不足', text: 'Gitセーフティルールなし。<strong>危険な生き方。</strong> `rm -rf` 一発で学習体験が始まる。', type: 'roast' });
+
+  if (a.testMentions === 0 && a.wordCount > 50)
+    roasts.push({ cat: '基礎不足', text: 'テストの言及ゼロ。2005年みたいにコードをシップしてる。', type: 'roast' });
+
+  if (a.securityMentions === 0 && a.wordCount > 50)
+    roasts.push({ cat: '基礎不足', text: 'セキュリティルールなし。.envがコミットされてAPIキーがGitHub上で勝利の一周してそう。', type: 'roast' });
+
+  if (a.hasGitSafety)
+    roasts.push({ cat: '敬意', text: 'Gitセーフティルールがある。<strong>これは本当に良い。</strong> リポジトリに感謝されてる。', type: 'compliment' });
+
+  if (a.testMentions > 3)
+    roasts.push({ cat: '敬意', text: 'テストへの強い意識。<strong>未来の自分が感謝する。</strong> 一度痛い目に遭った人の証。', type: 'compliment' });
+
+  if (a.securityMentions > 3)
+    roasts.push({ cat: '敬意', text: '堅実なセキュリティ意識。<strong>誰もが考えるわけじゃない。</strong> AIが秘密を誤ってコミットしない。', type: 'compliment' });
+
+  if (a.codeBlocks > 2)
+    roasts.push({ cat: '敬意', text: '指示にコード例を入れてる。<strong>Show, don\'t tell。</strong> 文章より実際に効果がある。', type: 'compliment' });
+
+  if (a.headers >= 3 && a.headers <= 10 && a.lineCount >= 30 && a.lineCount <= 150)
+    roasts.push({ cat: '敬意', text: 'ちょうどいいセクション数と行数。<strong>CLAUDE.mdのゴールディロックスゾーン。</strong>', type: 'compliment' });
+
+  if (a.strictTotal >= 3 && a.strictTotal <= 12)
+    roasts.push({ cat: '敬意', text: 'やりすぎず少なすぎずのガードレール数。<strong>自分の境界線をわかってる。</strong>', type: 'compliment' });
+
+  return roasts;
+}
+
+function toggleLang() {
+  currentLang = currentLang === 'en' ? 'ja' : 'en';
+  applyLang();
+  if (lastVerdict && lastAnalysis) renderResults(lastAnalysis, lastVerdict);
+}
+
+function applyLang() {
+  const ui = currentLang === 'ja' ? UI_JA : UI_EN;
+  document.getElementById('tagline').textContent = ui.tagline;
+  document.getElementById('input-label').textContent = ui.inputLabel;
+  document.getElementById('claude-md').placeholder = ui.placeholder;
+  document.getElementById('roast-btn').textContent = ui.roastBtn;
+  document.getElementById('demo-link').textContent = ui.demoLink;
+  document.getElementById('lang-btn').textContent = ui.langBtn;
+  const shareTextEl = document.getElementById('share-text');
+  if (shareTextEl) shareTextEl.textContent = ui.shareText;
+  const twitterBtn = document.getElementById('share-twitter-btn');
+  if (twitterBtn) twitterBtn.textContent = ui.shareTwitter;
+  const copyBtn = document.getElementById('copy-btn');
+  if (copyBtn) copyBtn.textContent = ui.copyResult;
+  const againBtn = document.getElementById('again-btn');
+  if (againBtn) againBtn.textContent = ui.roastAgain;
+}
+
+function renderResults(a, verdict) {
+  const ui = currentLang === 'ja' ? UI_JA : UI_EN;
+  const verdictTitle = currentLang === 'ja' && VERDICTS_JA[verdict.id] ? VERDICTS_JA[verdict.id].title : verdict.title;
+  const verdictSub   = currentLang === 'ja' && VERDICTS_JA[verdict.id] ? VERDICTS_JA[verdict.id].subtitle : verdict.subtitle;
+
+  document.getElementById('verdict-icon').textContent = verdict.icon;
+  document.getElementById('verdict-title').textContent = verdictTitle;
+  document.getElementById('verdict-subtitle').textContent = verdictSub;
+
+  // Quick stats
+  const qs = document.getElementById('quick-stats');
+  qs.innerHTML = '';
+  [{v: a.lineCount, l: ui.lines}, {v: a.wordCount, l: ui.words}, {v: a.strictTotal, l: ui.strictRules}, {v: a.headers, l: ui.sections}].forEach(s => {
+    const d = document.createElement('div');
+    d.className = 'qs-item';
+    d.innerHTML = '<div class="qs-val">' + s.v + '</div><div class="qs-lbl">' + s.l + '</div>';
+    qs.appendChild(d);
+  });
+
+  // Score cards
+  const vScore = verbosityScore(a);
+  const sScore = strictnessScore(a);
+  const cScore = complexityScore(a);
+  const tScore = thoroughnessScore(a);
+  const sg = document.getElementById('scores-grid');
+  sg.innerHTML = '';
+  [
+    { icon: '📝', label: ui.verbosity,    value: vScore, color: '#ff4500' },
+    { icon: '🔒', label: ui.strictness,  value: sScore, color: '#ff6b35' },
+    { icon: '⚙️', label: ui.complexity,  value: cScore, color: '#00d4ff' },
+    { icon: '✅', label: ui.thoroughness, value: tScore, color: '#10b981' }
+  ].forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'score-card';
+    card.innerHTML =
+      '<div class="sc-icon">' + s.icon + '</div>' +
+      '<div class="sc-label">' + s.label + '</div>' +
+      '<div class="sc-value">' + s.value + '<span style="font-size:0.8rem;color:var(--text-faint)">/100</span></div>' +
+      '<div class="sc-bar"><div class="sc-fill" style="width:' + s.value + '%;background:' + s.color + '"></div></div>';
+    sg.appendChild(card);
+  });
+
+  // Roast items
+  const roasts = currentLang === 'ja' ? generateRoastsJA(a) : generateRoasts(a);
+  const rl = document.getElementById('roast-list');
+  rl.innerHTML = '';
+  roasts.forEach(r => {
+    const item = document.createElement('div');
+    item.className = 'roast-item' + (r.type === 'compliment' ? ' compliment' : '');
+    item.innerHTML =
+      '<div class="ri-category">' + (r.type === 'compliment' ? '⭐ ' : '🔥 ') + r.cat + '</div>' +
+      '<div class="ri-text">' + r.text + '</div>';
+    rl.appendChild(item);
+  });
 }
 </script>
 </body>

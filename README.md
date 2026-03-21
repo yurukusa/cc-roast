@@ -46,7 +46,7 @@ Paste your Claude Code instruction file and get a comedy-style code review. 11 v
 | [cc-cost-check](https://yurukusa.github.io/cc-cost-check/) | Cost per commit calculator |
 | [cc-wrapped](https://yurukusa.github.io/cc-wrapped/) | Your AI year in review |
 | **[cc-roast](https://yurukusa.github.io/cc-roast/)** | Your CLAUDE.md, brutally honest |
-| [claude-code-hooks](https://github.com/yurukusa/claude-code-hooks) | Fix what's broken — 10 hooks + 5 templates |
+| [claude-code-hooks](https://github.com/yurukusa/claude-code-hooks) | Fix what's broken — 16 hooks + 5 templates |
 
 ## License
 

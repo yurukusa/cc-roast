@@ -744,16 +744,24 @@ function shareTwitter() {
 function copyResult() {
   if (!lastVerdict || !lastAnalysis) return;
   const a = lastAnalysis;
-  const text = 'CC Roast Result:\n' +
-    lastVerdict.icon + ' ' + lastVerdict.title + '\n' +
-    '"' + lastVerdict.subtitle + '"\n' +
-    a.lineCount + ' lines | ' + a.strictTotal + ' strict rules | ' + a.headers + ' sections\n' +
-    'Verbosity: ' + verbosityScore(a) + '/100 | Strictness: ' + strictnessScore(a) + '/100\n' +
-    'https://yurukusa.github.io/cc-roast/';
+  // shareTwitter と同じく、日本語の時は VERDICTS_JA の文言でコピーする。
+  // コピーする文章は X 共有と同じ拡散の経路なので、言語を揃えないと
+  // 日本語の利用者が英語の結果を貼ることになる。
+  const vt = currentLang === 'ja' && VERDICTS_JA[lastVerdict.id] ? VERDICTS_JA[lastVerdict.id].title : lastVerdict.title;
+  const vs = currentLang === 'ja' && VERDICTS_JA[lastVerdict.id] ? VERDICTS_JA[lastVerdict.id].subtitle : lastVerdict.subtitle;
+  const text = currentLang === 'ja'
+    ? 'CC Roast の結果:\n' + lastVerdict.icon + ' ' + vt + '\n"' + vs + '"\n' +
+      a.lineCount + '行 | ' + a.strictTotal + ' strictルール | ' + a.headers + 'セクション\n' +
+      '冗長度: ' + verbosityScore(a) + '/100 | 厳格度: ' + strictnessScore(a) + '/100\n' +
+      'https://yurukusa.github.io/cc-roast/'
+    : 'CC Roast Result:\n' + lastVerdict.icon + ' ' + lastVerdict.title + '\n"' + lastVerdict.subtitle + '"\n' +
+      a.lineCount + ' lines | ' + a.strictTotal + ' strict rules | ' + a.headers + ' sections\n' +
+      'Verbosity: ' + verbosityScore(a) + '/100 | Strictness: ' + strictnessScore(a) + '/100\n' +
+      'https://yurukusa.github.io/cc-roast/';
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.querySelector('.share-btn.copy');
     const orig = btn.textContent;
-    btn.textContent = 'Copied!';
+    btn.textContent = currentLang === 'ja' ? 'コピーしました!' : 'Copied!';
     setTimeout(() => btn.textContent = orig, 1500);
   });
 }

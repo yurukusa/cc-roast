@@ -380,9 +380,12 @@ header .tagline {
 
   <div class="share-section">
     <div class="share-text" id="share-text">Dare your friends to get roasted too</div>
+    <canvas id="roastCanvas" width="600" height="315" style="display:none;"></canvas>
+    <div id="cardPreview" style="margin:0 auto 14px; max-width:480px;"></div>
     <div class="share-btns">
       <button class="share-btn twitter" onclick="shareTwitter()" id="share-twitter-btn">Share on X</button>
       <button class="share-btn copy" onclick="copyResult()" id="copy-btn">Copy Result</button>
+      <button class="share-btn copy" onclick="downloadCard()" id="download-card-btn">Download Card</button>
       <button class="share-btn again" onclick="tryAgain()" id="again-btn">Roast Again</button>
     </div>
   </div>
@@ -794,8 +797,12 @@ const UI_JA = {
   shareText: '友達も採点してもらおう',
   shareTwitter: 'X でシェア',
   copyResult: 'コピー',
+  downloadCard: '画像を保存',
   roastAgain: 'もう一度',
   langBtn: 'EN',
+  cardScores: { v: '冗長', s: '厳格', c: '複雑', t: '網羅' },
+  cardTokens: 'トークン',
+  cardCost: '月の費用',
   lines: '行', words: '語', strictRules: 'Strictルール', sections: 'セクション',
   verbosity: '冗長性', strictness: '厳格性', complexity: '複雑性', thoroughness: '網羅性',
   roastIcon: '🔥', complimentIcon: '⭐',
@@ -826,8 +833,12 @@ const UI_EN = {
   shareText: 'Dare your friends to get roasted too',
   shareTwitter: 'Share on X',
   copyResult: 'Copy Result',
+  downloadCard: 'Download Card',
   roastAgain: 'Roast Again',
   langBtn: '日本語',
+  cardScores: { v: 'Verbose', s: 'Strict', c: 'Complex', t: 'Thorough' },
+  cardTokens: 'Tokens',
+  cardCost: 'Cost/mo',
   lines: 'Lines', words: 'Words', strictRules: 'Strict Rules', sections: 'Sections',
   verbosity: 'Verbosity', strictness: 'Strictness', complexity: 'Complexity', thoroughness: 'Thoroughness',
   roastIcon: '🔥', complimentIcon: '⭐',
@@ -962,6 +973,8 @@ function applyLang() {
   if (twitterBtn) twitterBtn.textContent = ui.shareTwitter;
   const copyBtn = document.getElementById('copy-btn');
   if (copyBtn) copyBtn.textContent = ui.copyResult;
+  const dlBtn = document.getElementById('download-card-btn');
+  if (dlBtn) dlBtn.textContent = ui.downloadCard;
   const againBtn = document.getElementById('again-btn');
   if (againBtn) againBtn.textContent = ui.roastAgain;
 }
@@ -1023,6 +1036,72 @@ function renderResults(a, verdict) {
       '<div class="ri-text">' + r.text + '</div>';
     rl.appendChild(item);
   });
+
+  // Shareable visual card
+  generateRoastCard(a, verdict);
+}
+
+// --- Shareable visual card (added) ---
+function generateRoastCard(a, verdict) {
+  const ui = currentLang === 'ja' ? UI_JA : UI_EN;
+  const vTitle = currentLang === 'ja' && VERDICTS_JA[verdict.id] ? VERDICTS_JA[verdict.id].title : verdict.title;
+  const canvas = document.getElementById('roastCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#0d0d0d';
+  ctx.fillRect(0, 0, 600, 315);
+  ctx.fillStyle = '#ff4500';
+  ctx.fillRect(0, 0, 600, 5);
+  // Brand
+  ctx.fillStyle = '#888';
+  ctx.font = '15px -apple-system, sans-serif';
+  ctx.fillText('CC Roast' + (currentLang === 'ja' ? ' — CLAUDE.md を採点' : ' — Your CLAUDE.md, roasted'), 32, 42);
+  // Verdict
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 34px -apple-system, sans-serif';
+  ctx.fillText(verdict.icon + ' ' + vTitle, 32, 92);
+  // Scores (4 dimensions as bars)
+  const scores = [
+    { l: ui.cardScores.v, v: verbosityScore(a) },
+    { l: ui.cardScores.s, v: strictnessScore(a) },
+    { l: ui.cardScores.c, v: complexityScore(a) },
+    { l: ui.cardScores.t, v: thoroughnessScore(a) },
+  ];
+  let y = 130;
+  scores.forEach(s => {
+    ctx.fillStyle = '#bbb';
+    ctx.font = '13px -apple-system, sans-serif';
+    ctx.fillText(s.l, 32, y + 10);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(130, y, 200, 14);
+    ctx.fillStyle = s.v < 34 ? '#10b981' : s.v < 67 ? '#ffd166' : '#ff4500';
+    ctx.fillRect(130, y, (s.v / 100) * 200, 14);
+    ctx.fillStyle = '#888';
+    ctx.font = '12px -apple-system, sans-serif';
+    ctx.fillText(s.v + '/100', 345, y + 11);
+    y += 26;
+  });
+  // Token + cost (the quantified hook)
+  const T = a.tokenEstimate || 0;
+  const monthlyHigh = (T * 100 * 5 / 1e6);
+  ctx.fillStyle = '#ff7a45';
+  ctx.font = 'bold 17px -apple-system, sans-serif';
+  ctx.fillText('≈ ' + T.toLocaleString() + ' ' + ui.cardTokens + '   /   ' + ui.cardCost + ' ≈ $' + (monthlyHigh < 10 ? monthlyHigh.toFixed(2) : Math.round(monthlyHigh)), 32, y + 24);
+  // URL
+  ctx.fillStyle = '#1da1f2';
+  ctx.font = '13px -apple-system, sans-serif';
+  ctx.fillText('yurukusa.github.io/cc-roast', 32, 300);
+  // Preview
+  const prev = document.getElementById('cardPreview');
+  if (prev) prev.innerHTML = '<img src="' + canvas.toDataURL('image/png') + '" style="max-width:100%;border-radius:10px;border:1px solid #333;" alt="roast card"/>';
+}
+function downloadCard() {
+  const canvas = document.getElementById('roastCanvas');
+  if (!canvas) return;
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = 'cc-roast-card.png';
+  a.click();
 }
 
 // --- Token cost estimate (added) ---

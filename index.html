@@ -374,6 +374,7 @@ header .tagline {
   </div>
 
   <div class="quick-stats" id="quick-stats"></div>
+  <div id="token-cost"></div>
   <div class="scores-grid" id="scores-grid"></div>
   <div class="roast-list" id="roast-list"></div>
 
@@ -510,8 +511,15 @@ function analyze(md) {
   // TODO/FIXME
   const todos = (text.match(/\bTODO\b|\bFIXME\b|\bHACK\b/gi) || []).length;
 
+  // Token estimate (概算). CLAUDE.md is re-read into the context on every session,
+  // so its token weight is a recurring input cost. CJK(かな・漢字)は1tokenあたりの
+  // 文字数が英語より少ないので、CJKと非CJKを分けて見積もる。厳密なtiktokenではなく、
+  // 英語 約4文字/token・日本語 約1.25文字/token の概算。
+  const cjkChars = (text.match(/[぀-ヿ㐀-䶿一-鿿豈-﫿ｦ-ﾟ]/g) || []).length;
+  const tokenEstimate = Math.round(cjkChars * 0.8 + (charCount - cjkChars) * 0.25);
+
   return {
-    lineCount, wordCount, charCount,
+    lineCount, wordCount, charCount, cjkChars, tokenEstimate,
     nevers, donts, always, musts, shoulds, importants, criticals, jpStrict, strictTotal,
     h2s, h3s, headers,
     hookMentions, mcpMentions, toolMentions,
@@ -791,6 +799,21 @@ const UI_JA = {
   lines: '行', words: '語', strictRules: 'Strictルール', sections: 'セクション',
   verbosity: '冗長性', strictness: '厳格性', complexity: '複雑性', thoroughness: '網羅性',
   roastIcon: '🔥', complimentIcon: '⭐',
+  cost: {
+    heading: '💰 このCLAUDE.mdの毎月のトークン費用（概算）',
+    tokens: '推定トークン数',
+    ctx: '200Kコンテキストに占める割合',
+    sessionsLabel: '月のセッション数',
+    monthlyTokens: '月あたりのトークン量（CLAUDE.md分のみ）',
+    costRange: '月の費用の概算',
+    costNote: 'キャッシュ読み($0.50/M)〜未キャッシュの入力($5/M)の幅。Opus 4.5〜4.8の公式単価。実費はキャッシュの効き方とターン数で変わります。',
+    insight: 'CLAUDE.mdは毎セッション、文脈に丸ごと読み込まれます。だから1行の冗長さも、毎回くり返し課金されます。',
+    saveTitle: '半分に削ると',
+    saveBody: 'CLAUDE.mdを簡潔な35行前後に絞ると、トークンを約半分に減らせます（実測）。上の費用の約半分が、毎月そのまま浮きます。',
+    ctaText: '削減の具体的なやり方（CLAUDE.mdの書き方・キャッシュ・サブエージェント）は、800時間の運用データから10章にまとめた本にあります。',
+    ctaBtn: 'トークン節約の本を見る（¥2,500）→',
+    methodNote: '※トークン数は概算です（厳密なtiktokenではありません）。相対的な削減の効果の目安としてお使いください。',
+  },
 };
 
 const UI_EN = {
@@ -808,6 +831,21 @@ const UI_EN = {
   lines: 'Lines', words: 'Words', strictRules: 'Strict Rules', sections: 'Sections',
   verbosity: 'Verbosity', strictness: 'Strictness', complexity: 'Complexity', thoroughness: 'Thoroughness',
   roastIcon: '🔥', complimentIcon: '⭐',
+  cost: {
+    heading: '💰 Monthly token cost of this CLAUDE.md (estimate)',
+    tokens: 'Estimated tokens',
+    ctx: 'Share of a 200K context window',
+    sessionsLabel: 'Sessions per month',
+    monthlyTokens: 'Monthly tokens (CLAUDE.md only)',
+    costRange: 'Estimated monthly cost',
+    costNote: 'Range from cache reads ($0.50/M) to uncached input ($5/M). Official Opus 4.5–4.8 rates. Real cost depends on caching and turns.',
+    insight: 'Your CLAUDE.md is loaded into context on every single session. So every verbose line is billed again and again.',
+    saveTitle: 'Cut it in half',
+    saveBody: 'Trimming your CLAUDE.md to a lean ~35 lines cuts its tokens roughly in half (measured). About half of the cost above is saved every month.',
+    ctaText: 'The exact how-to (CLAUDE.md style, caching, sub-agents) is in a book distilled from 800 hours of real operation, in 10 chapters.',
+    ctaBtn: 'See the token-savings book (¥2,500) →',
+    methodNote: '* Token count is an estimate (not exact tiktoken). Use it as a guide for the relative savings.',
+  },
 };
 
 const VERDICTS_JA = {
@@ -947,6 +985,9 @@ function renderResults(a, verdict) {
     qs.appendChild(d);
   });
 
+  // Token cost estimate
+  renderTokenCost(a);
+
   // Score cards
   const vScore = verbosityScore(a);
   const sScore = strictnessScore(a);
@@ -982,6 +1023,57 @@ function renderResults(a, verdict) {
       '<div class="ri-text">' + r.text + '</div>';
     rl.appendChild(item);
   });
+}
+
+// --- Token cost estimate (added) ---
+let lastTokenEstimate = 0;
+function renderTokenCost(a) {
+  lastTokenEstimate = a.tokenEstimate || 0;
+  recomputeCost();
+}
+function recomputeCost() {
+  const el = document.getElementById('token-cost');
+  if (!el) return;
+  const c = (currentLang === 'ja' ? UI_JA : UI_EN).cost;
+  const T = lastTokenEstimate;
+  if (!T) { el.innerHTML = ''; return; }
+  const sInput = document.getElementById('sessions-input');
+  let S = sInput ? parseInt(sInput.value, 10) : 100;
+  if (!S || S < 1) S = 100;
+  if (S > 100000) S = 100000;
+  const monthlyTokens = T * S;
+  const low = monthlyTokens * 0.5 / 1e6;   // cache read $0.50/M
+  const high = monthlyTokens * 5 / 1e6;    // full input $5/M
+  const ctxPct = (T / 200000 * 100);
+  const fmtMoney = (n) => n < 10 ? '$' + n.toFixed(2) : '$' + Math.round(n).toLocaleString();
+  const fmtNum = (n) => Math.round(n).toLocaleString();
+  el.innerHTML =
+    '<div style="background:#141414;border:1px solid #ff4500;border-radius:12px;padding:18px 18px 20px;margin:14px 0 4px;">' +
+      '<div style="font-size:1.0rem;font-weight:800;color:#ff7a45;margin-bottom:12px;">' + c.heading + '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px;">' +
+        '<div><div style="font-size:1.5rem;font-weight:800;color:#fff;">' + fmtNum(T) + '</div><div style="font-size:0.72rem;color:#888;">' + c.tokens + '</div></div>' +
+        '<div><div style="font-size:1.5rem;font-weight:800;color:#fff;">' + ctxPct.toFixed(1) + '%</div><div style="font-size:0.72rem;color:#888;">' + c.ctx + '</div></div>' +
+      '</div>' +
+      '<div style="font-size:0.85rem;color:#bbb;margin-bottom:10px;">' + c.insight + '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">' +
+        '<label for="sessions-input" style="font-size:0.8rem;color:#aaa;">' + c.sessionsLabel + ':</label>' +
+        '<input id="sessions-input" type="number" min="1" max="100000" value="' + S + '" oninput="recomputeCost()" ' +
+          'style="width:84px;background:#000;border:1px solid #444;color:#fff;border-radius:6px;padding:4px 8px;font-size:0.85rem;">' +
+      '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:6px;">' +
+        '<div><div style="font-size:1.2rem;font-weight:800;color:#fff;">' + fmtNum(monthlyTokens) + '</div><div style="font-size:0.72rem;color:#888;">' + c.monthlyTokens + '</div></div>' +
+        '<div><div style="font-size:1.2rem;font-weight:800;color:#10b981;">' + fmtMoney(low) + ' – ' + fmtMoney(high) + '</div><div style="font-size:0.72rem;color:#888;">' + c.costRange + '</div></div>' +
+      '</div>' +
+      '<div style="font-size:0.7rem;color:#666;margin-bottom:14px;">' + c.costNote + '</div>' +
+      '<div style="background:#0d0d0d;border-left:3px solid #10b981;border-radius:6px;padding:12px 14px;">' +
+        '<div style="font-size:0.9rem;font-weight:700;color:#10b981;margin-bottom:4px;">' + c.saveTitle + ' → ' + fmtMoney(low / 2) + ' – ' + fmtMoney(high / 2) + '</div>' +
+        '<div style="font-size:0.8rem;color:#aaa;margin-bottom:10px;">' + c.saveBody + '</div>' +
+        '<div style="font-size:0.8rem;color:#aaa;margin-bottom:10px;">' + c.ctaText + '</div>' +
+        '<a href="https://yurukusa.booth.pm/items/8230255" target="_blank" rel="noopener" ' +
+          'style="display:inline-block;background:#10b981;color:#04130d;padding:9px 18px;border-radius:8px;font-weight:800;text-decoration:none;font-size:0.85rem;">' + c.ctaBtn + '</a>' +
+      '</div>' +
+      '<div style="font-size:0.68rem;color:#555;margin-top:10px;">' + c.methodNote + '</div>' +
+    '</div>';
 }
 </script>
 
